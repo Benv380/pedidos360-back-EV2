@@ -75,7 +75,7 @@ paths:
       - name: id
         in: path
         required: true
-        schema: &id001
+        schema:
           type: integer
           format: int64
   /api/pedidos/{id}/estado:
@@ -99,7 +99,9 @@ paths:
       - name: id
         in: path
         required: true
-        schema: *id001
+        schema:
+          type: integer
+          format: int64
   /api/pedidos/{id}/boleta:
     post:
       operationId: solicitarBoleta
@@ -121,7 +123,9 @@ paths:
       - name: id
         in: path
         required: true
-        schema: *id001
+        schema:
+          type: integer
+          format: int64
   /api/documentos:
     get:
       operationId: listarDocumentos
@@ -167,7 +171,9 @@ paths:
       - name: id
         in: path
         required: true
-        schema: *id001
+        schema:
+          type: integer
+          format: int64
   /api/notificaciones:
     get:
       operationId: listarNotificaciones
@@ -240,7 +246,7 @@ paths:
       - name: id
         in: path
         required: true
-        schema: &id002
+        schema:
           type: string
           enum:
           - notificaciones
@@ -249,7 +255,7 @@ paths:
       - name: accion
         in: path
         required: true
-        schema: &id003
+        schema:
           type: string
           enum:
           - pausar
@@ -292,11 +298,20 @@ paths:
       - name: id
         in: path
         required: true
-        schema: *id002
+        schema:
+          type: string
+          enum:
+          - notificaciones
+          - auditoria
+          - documentos
       - name: accion
         in: path
         required: true
-        schema: *id003
+        schema:
+          type: string
+          enum:
+          - pausar
+          - reanudar
   /api/admin/rabbit/salud:
     get:
       operationId: saludMensajeria
@@ -352,7 +367,7 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: &id004
+        schema:
           type: string
           pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
     delete:
@@ -375,7 +390,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
   /api/admin/rabbit/queues/{nombre}/reprocesar:
     post:
       operationId: reprocesarDlq
@@ -397,7 +414,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
       - name: max
         in: query
         required: false
@@ -476,7 +495,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
     delete:
       operationId: eliminarCola
       summary: Eliminar cola
@@ -497,7 +518,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
       - name: soloSiVacia
         in: query
         required: false
@@ -524,7 +547,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
     delete:
       operationId: purgarCola
       summary: Purgar mensajes de una cola
@@ -545,7 +570,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
   /api/admin/rabbit/exchanges:
     get:
       operationId: listarExchanges
@@ -600,7 +627,9 @@ paths:
       - name: nombre
         in: path
         required: true
-        schema: *id004
+        schema:
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
   /api/admin/rabbit/bindings:
     get:
       operationId: listarBindings

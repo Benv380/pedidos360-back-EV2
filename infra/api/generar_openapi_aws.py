@@ -10,6 +10,7 @@ Uso:  pip install pyyaml  &&  python generar_openapi_aws.py
 Los marcadores IP_BACKEND, REGION, USER_POOL_ID, CLIENT_ID_COGNITO y ORIGEN_FRONTEND se reemplazan
 a mano (o con buscar/reemplazar) antes de importar el archivo.
 """
+import copy
 from pathlib import Path
 
 import yaml
@@ -22,8 +23,8 @@ METODOS = ("get", "post", "put", "patch", "delete")
 
 def resolver(parametro):
     if "$ref" in parametro:
-        return dict(PARAMETROS[parametro["$ref"].split("/")[-1]])
-    return dict(parametro)
+        return copy.deepcopy(PARAMETROS[parametro["$ref"].split("/")[-1]])
+    return copy.deepcopy(parametro)
 
 
 rutas = {}
