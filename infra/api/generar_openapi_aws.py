@@ -38,6 +38,7 @@ for ruta, operaciones in BASE["paths"].items():
             "summary": op.get("summary", ""),
             "tags": op.get("tags", []),
             "security": [{"cognito": []}],
+            "responses": {"default": {"description": "Respuesta del backend (proxy)"}},
             "x-amazon-apigateway-integration": {
                 "type": "http_proxy",
                 "httpMethod": metodo.upper(),

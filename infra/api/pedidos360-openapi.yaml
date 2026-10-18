@@ -72,7 +72,7 @@ paths:
       summary: Solicitar boleta (publica BOLETA_SOLICITADA en el exchange DIRECT)
       parameters: [ { $ref: '#/components/parameters/Id' } ]
       responses:
-        '202': { description: Aceptada, se procesa de forma asíncrona }
+        '202': { description: 'Aceptada: se procesa de forma asíncrona' }
         '409': { $ref: '#/components/responses/Conflicto' }
   /documentos:
     get:
