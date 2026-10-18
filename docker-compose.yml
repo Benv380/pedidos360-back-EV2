@@ -145,7 +145,8 @@ services:
   gateway:
     image: nginx:1.27-alpine
     ports:
-      - "8080:8080"
+      # En la nube: GATEWAY_PORT=80 (puerto ya abierto en el firewall de la VM)
+      - "${GATEWAY_PORT:-8080}:8080"
     volumes:
       - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
