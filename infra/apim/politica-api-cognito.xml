@@ -1,0 +1,64 @@
+<!--
+  Política de la API "Pedidos 360 API" en Azure API Management usando Amazon Cognito como IDaaS
+  (Design → All operations → Inbound processing → </>).
+
+  1) CORS: permite al frontend (otro dominio) llamar a la API y responde los preflight OPTIONS sin token.
+  2) validate-jwt: rechaza con 401 lo que no traiga un access token válido de Cognito:
+     - firma verificada con las llaves públicas (JWKS) del user pool (openid-config)
+     - emisor (iss) = user pool de Cognito
+     - expiración (exp) obligatoria
+     - client_id = app cliente pedidos360-spa (Cognito no usa "aud" en los access tokens)
+     - token_use = access (no se aceptan id tokens)
+-->
+<policies>
+    <inbound>
+        <base />
+        <cors allow-credentials="false">
+            <allowed-origins>
+                <origin>https://pedidos360frontbenja.z1.web.core.windows.net</origin>
+                <origin>http://localhost:4200</origin>
+            </allowed-origins>
+            <allowed-methods preflight-result-max-age="600">
+                <method>GET</method>
+                <method>POST</method>
+                <method>PUT</method>
+                <method>PATCH</method>
+                <method>DELETE</method>
+                <method>OPTIONS</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>Authorization</header>
+                <header>Content-Type</header>
+            </allowed-headers>
+            <expose-headers>
+                <header>Location</header>
+            </expose-headers>
+        </cors>
+        <validate-jwt header-name="Authorization" require-scheme="Bearer"
+                      failed-validation-httpcode="401"
+                      failed-validation-error-message="API Manager: token JWT ausente o inválido"
+                      require-expiration-time="true" require-signed-tokens="true">
+            <openid-config url="https://cognito-idp.us-east-1.amazonaws.com/us-east-1_I5Mm0voNI/.well-known/openid-configuration" />
+            <issuers>
+                <issuer>https://cognito-idp.us-east-1.amazonaws.com/us-east-1_I5Mm0voNI</issuer>
+            </issuers>
+            <required-claims>
+                <claim name="client_id" match="any">
+                    <value>7m86tlt309sojlv0imqa9j6f5e</value>
+                </claim>
+                <claim name="token_use" match="any">
+                    <value>access</value>
+                </claim>
+            </required-claims>
+        </validate-jwt>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>
