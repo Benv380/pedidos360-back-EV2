@@ -1,0 +1,61 @@
+<!--
+  Política de la API "pedidos360" en Azure API Management (nivel API, pestaña "All operations").
+  Reemplazar:
+    ORIGEN_FRONTEND  -> https://<tu-app>.azurestaticapps.net
+    SUBDOMINIO       -> subdominio del tenant externo de Entra (ej: pedidos360)
+    TENANT_ID        -> Directory (tenant) ID del tenant externo
+    CLIENT_ID        -> Application (client) ID de la app registrada
+    IP_VM            -> IP pública de la VM donde corre docker-compose
+
+  Orden: 1) CORS (responde los preflight OPTIONS sin exigir token)
+         2) validate-jwt: rechaza con 401 peticiones sin token, con firma inválida, expiradas,
+            de otro emisor o de otra audiencia. Solo las válidas llegan al backend.
+         3) set-backend-service: reenvía al gateway nginx de la VM.
+-->
+<policies>
+    <inbound>
+        <base />
+        <cors allow-credentials="false" terminate-unmatched-request="true">
+            <allowed-origins>
+                <origin>ORIGEN_FRONTEND</origin>
+                <origin>http://localhost:4200</origin>
+            </allowed-origins>
+            <allowed-methods preflight-result-max-age="600">
+                <method>GET</method>
+                <method>POST</method>
+                <method>PATCH</method>
+                <method>DELETE</method>
+                <method>OPTIONS</method>
+            </allowed-methods>
+            <allowed-headers>
+                <header>Authorization</header>
+                <header>Content-Type</header>
+            </allowed-headers>
+            <expose-headers>
+                <header>Location</header>
+            </expose-headers>
+        </cors>
+        <validate-jwt header-name="Authorization" require-scheme="Bearer"
+                      failed-validation-httpcode="401"
+                      failed-validation-error-message="API Manager: token JWT ausente o inválido"
+                      require-expiration-time="true" require-signed-tokens="true">
+            <openid-config url="https://SUBDOMINIO.ciamlogin.com/TENANT_ID/v2.0/.well-known/openid-configuration" />
+            <audiences>
+                <audience>CLIENT_ID</audience>
+            </audiences>
+            <issuers>
+                <issuer>https://TENANT_ID.ciamlogin.com/TENANT_ID/v2.0</issuer>
+            </issuers>
+        </validate-jwt>
+        <set-backend-service base-url="http://IP_VM:8080/api" />
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

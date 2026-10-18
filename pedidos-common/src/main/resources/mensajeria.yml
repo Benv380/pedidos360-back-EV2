@@ -1,0 +1,112 @@
+# =====================================================================================
+#  CONFIGURACIÓN CENTRALIZADA DE MENSAJERÍA (RabbitMQ)
+#
+#  Este es el ÚNICO lugar donde se definen los nombres de exchanges, colas, DLQ y
+#  routing keys. Todos los microservicios lo importan con:
+#      spring.config.import: classpath:mensajeria.yml
+#  y lo leen mediante MensajeriaProperties (@ConfigurationProperties "mensajeria")
+#  o con placeholders ${mensajeria...} en @RabbitListener. No hay nombres sueltos en el código.
+#
+#  Topología:
+#
+#   pedidos-service ──► [pedidos.eventos.fanout]   (FANOUT) ──┬─► notificaciones.queue
+#        │              PEDIDO_CREADO (broadcast)              ├─► documentos.queue
+#        │                                                     └─► auditoria.queue
+#        │
+#        ├────────────► [pedidos.estados.topic]    (TOPIC)
+#        │              rk = pedido.estado.<estado>  ── "pedido.estado.*" ─► notificaciones.queue
+#        │                                           ── "pedido.#"        ─► auditoria.queue
+#        │
+#        └────────────► [pedidos.documentos.direct] (DIRECT)
+#                       rk = documento.boleta        ── "documento.boleta" ─► documentos.queue
+#                                                    ── "documento.boleta" ─► auditoria.queue
+#
+#   Cada cola tiene x-dead-letter-exchange = pedidos.dlx (DIRECT) y su propia DLQ:
+#     notificaciones.queue ─NACK─► pedidos.dlx ─► notificaciones.dlq
+#     documentos.queue     ─NACK─► pedidos.dlx ─► documentos.dlq
+#     auditoria.queue      ─NACK─► pedidos.dlx ─► auditoria.dlq
+# =====================================================================================
+
+spring:
+  rabbitmq:
+    # Ambos nodos del clúster: si uno cae, el cliente se conecta al otro.
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673}
+    username: ${RABBITMQ_USER:pedidos}
+    password: ${RABBITMQ_PASSWORD:pedidos123}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    # Confirmaciones del broker hacia el productor (publisher confirms + returns)
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        # ACK manual: cada consumidor confirma (basicAck) o rechaza (basicNack) explícitamente.
+        acknowledge-mode: manual
+        # PREFETCH: máximo de mensajes entregados y aún sin ACK por consumidor.
+        #  - Alto  -> más throughput, pero un consumidor lento "acapara" mensajes y sube la memoria.
+        #  - Bajo  -> reparto más justo entre consumidores, menos throughput.
+        prefetch: ${RABBITMQ_PREFETCH:10}
+        # CONCURRENCIA: consumidores por cola. Arranca con 1 y escala hasta 4 si hay backlog.
+        concurrency: ${RABBITMQ_CONSUMIDORES_MIN:1}
+        max-concurrency: ${RABBITMQ_CONSUMIDORES_MAX:4}
+        default-requeue-rejected: false
+
+mensajeria:
+  exchanges:
+    eventos-fanout: pedidos.eventos.fanout
+    estados-topic: pedidos.estados.topic
+    documentos-direct: pedidos.documentos.direct
+    dead-letter: pedidos.dlx
+  colas:
+    notificaciones:
+      nombre: notificaciones.queue
+      dlq: notificaciones.dlq
+    documentos:
+      nombre: documentos.queue
+      dlq: documentos.dlq
+    auditoria:
+      nombre: auditoria.queue
+      dlq: auditoria.dlq
+  routing-keys:
+    # Los cambios de estado se publican como "pedido.estado.<estado>" (ej: pedido.estado.pagado)
+    estado-prefijo: pedido.estado
+    # Patrón del binding topic hacia notificaciones (solo cambios de estado)
+    estados-notificables: pedido.estado.*
+    # Patrón del binding topic hacia auditoría (todo lo que empiece con "pedido.")
+    todos-los-pedidos: pedido.#
+    # Routing key exacta del exchange direct para solicitar boletas
+    documento-boleta: documento.boleta
+  reintentos:
+    # Reintentos ante errores RECUPERABLES antes de enviar el mensaje a la DLQ
+    maximo: 3
+    # Espera base entre reintentos (backoff lineal: espera * n° de intento)
+    espera-ms: 1000
+
+  # ===================================================================================
+  #  RETENCIÓN Y LIMPIEZA: evitan el crecimiento descontrolado de mensajes.
+  #  Se aplican como argumentos de cada cola al declararla (x-message-ttl, x-max-length,
+  #  x-overflow). Se ven en la consola de RabbitMQ como "TTL", "Lim" y "DLX".
+  # ===================================================================================
+  retencion:
+    # Colas de trabajo (notificaciones, documentos, auditoría)
+    colas:
+      # Un mensaje que nadie procesa en 24 h EXPIRA y, como la cola tiene DLX, pasa a su DLQ
+      # (motivo "expired" en la cabecera x-death). No se pierde en silencio.
+      ttl-ms: ${RETENCION_COLA_TTL_MS:86400000}
+      # Máximo de mensajes en espera. Protege la memoria/disco del broker ante una caída prolongada
+      # de los consumidores.
+      max-mensajes: ${RETENCION_COLA_MAX:10000}
+      # Qué hacer al llegar al máximo:
+      #   reject-publish-dlx -> rechaza el mensaje NUEVO y lo envía a la DLQ (no se pierde)
+      #   reject-publish     -> rechaza el nuevo; el productor recibe NACK en el publisher confirm
+      #   drop-head          -> descarta el MÁS ANTIGUO
+      desborde: reject-publish-dlx
+    # Dead Letter Queues
+    dlq:
+      # Los mensajes fallidos se conservan 7 días para análisis/reproceso y luego se ELIMINAN
+      # (la DLQ no tiene DLX: al expirar se descartan).
+      ttl-ms: ${RETENCION_DLQ_TTL_MS:604800000}
+      max-mensajes: ${RETENCION_DLQ_MAX:5000}
+      # En la DLQ se prioriza lo reciente: al llenarse se descarta el fallo más antiguo.
+      desborde: drop-head

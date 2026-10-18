@@ -1,0 +1,30 @@
+server:
+  port: ${PORT:8083}
+
+spring:
+  application:
+    name: documentos-service
+  config:
+    # Nombres de colas/exchanges/routing keys y seguridad: centralizados en pedidos-common
+    import:
+      - classpath:mensajeria.yml
+      - classpath:seguridad.yml
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pedidos}
+    username: ${DB_USER:pedidos}
+    password: ${DB_PASSWORD:pedidos123}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+# Control de consumidores (pausar/reanudar): GET/POST /api/documentos/consumidores
+mensajeria:
+  control:
+    ruta: /api/documentos/consumidores
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.16</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>cl.duoc.pedidos</groupId>
+    <artifactId>pedidos-backend</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>pedidos-backend</name>
+    <description>Sistema de pedidos Cloud Native - microservicios Spring Boot + RabbitMQ</description>
+
+    <modules>
+        <module>pedidos-common</module>
+        <module>pedidos-service</module>
+        <module>notificaciones-service</module>
+        <module>documentos-service</module>
+        <module>rabbit-admin-service</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>cl.duoc.pedidos</groupId>
+                <artifactId>pedidos-common</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

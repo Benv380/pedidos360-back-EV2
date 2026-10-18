@@ -1,0 +1,22 @@
+server:
+  port: ${PORT:8084}
+
+spring:
+  application:
+    name: rabbit-admin-service
+  config:
+    # Nombres de colas/exchanges/routing keys y seguridad: centralizados en pedidos-common
+    import:
+      - classpath:mensajeria.yml
+      - classpath:seguridad.yml
+
+rabbit-admin:
+  # API HTTP de RabbitMQ Management (cualquier nodo del clúster). Se usa para listar colas, exchanges,
+  # bindings y nodos. Crear/eliminar se hace por AMQP con RabbitAdmin. Usuario y clave: los de spring.rabbitmq.
+  management-url: ${RABBITMQ_MANAGEMENT_URL:http://localhost:15672}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,4 @@
+cl.duoc.pedidos.common.mensajeria.config.MensajeriaAutoConfiguration
+cl.duoc.pedidos.common.mensajeria.control.ControlConsumidoresAutoConfiguration
+cl.duoc.pedidos.common.seguridad.SeguridadAutoConfiguration
+cl.duoc.pedidos.common.web.WebAutoConfiguration

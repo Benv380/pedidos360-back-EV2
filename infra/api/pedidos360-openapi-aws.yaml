@@ -1,0 +1,587 @@
+# GENERADO por generar_openapi_aws.py desde pedidos360-openapi.yaml. No editar a mano.
+openapi: 3.0.1
+info:
+  title: pedidos360-api
+  version: 1.0.0
+  description: Pedidos 360 en AWS API Gateway (HTTP API). Generado desde pedidos360-openapi.yaml.
+x-amazon-apigateway-cors:
+  allowOrigins:
+  - ORIGEN_FRONTEND
+  - http://localhost:4200
+  allowMethods:
+  - GET
+  - POST
+  - PATCH
+  - DELETE
+  - OPTIONS
+  allowHeaders:
+  - authorization
+  - content-type
+  exposeHeaders:
+  - location
+  maxAge: 600
+paths:
+  /api/pedidos:
+    get:
+      operationId: listarPedidos
+      summary: Listar pedidos
+      tags:
+      - Pedidos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/pedidos
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+    post:
+      operationId: crearPedido
+      summary: Crear pedido (publica PEDIDO_CREADO en el exchange FANOUT)
+      tags:
+      - Pedidos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/pedidos
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/pedidos/{id}:
+    get:
+      operationId: obtenerPedido
+      summary: Obtener pedido
+      tags:
+      - Pedidos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/pedidos/{id}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: &id001
+          type: integer
+          format: int64
+  /api/pedidos/{id}/estado:
+    patch:
+      operationId: cambiarEstadoPedido
+      summary: Cambiar estado (publica ESTADO_CAMBIADO en el exchange TOPIC)
+      tags:
+      - Pedidos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: PATCH
+        uri: http://IP_BACKEND:8080/api/pedidos/{id}/estado
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+  /api/pedidos/{id}/boleta:
+    post:
+      operationId: solicitarBoleta
+      summary: Solicitar boleta (publica BOLETA_SOLICITADA en el exchange DIRECT)
+      tags:
+      - Pedidos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/pedidos/{id}/boleta
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+  /api/documentos:
+    get:
+      operationId: listarDocumentos
+      summary: Listar tickets y boletas
+      tags:
+      - Documentos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/documentos
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: pedidoId
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+  /api/documentos/{id}/contenido:
+    get:
+      operationId: contenidoDocumento
+      summary: Contenido del documento (texto)
+      tags:
+      - Documentos
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/documentos/{id}/contenido
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id001
+  /api/notificaciones:
+    get:
+      operationId: listarNotificaciones
+      summary: Notificaciones enviadas
+      tags:
+      - Actividad
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/notificaciones
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/auditoria:
+    get:
+      operationId: listarAuditoria
+      summary: Eventos auditados (con exchange y routing key)
+      tags:
+      - Actividad
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/auditoria
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/notificaciones/consumidores:
+    get:
+      operationId: listarConsumidoresNotificaciones
+      summary: Consumidores de notificaciones-service (notificaciones y auditoría)
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/notificaciones/consumidores
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/notificaciones/consumidores/{id}/{accion}:
+    post:
+      operationId: cambiarConsumidorNotificaciones
+      summary: Pausar o reanudar un consumidor de notificaciones-service
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/notificaciones/consumidores/{id}/{accion}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: &id002
+          type: string
+          enum:
+          - notificaciones
+          - auditoria
+          - documentos
+      - name: accion
+        in: path
+        required: true
+        schema: &id003
+          type: string
+          enum:
+          - pausar
+          - reanudar
+  /api/documentos/consumidores:
+    get:
+      operationId: listarConsumidoresDocumentos
+      summary: Consumidores de documentos-service
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/documentos/consumidores
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/documentos/consumidores/{id}/{accion}:
+    post:
+      operationId: cambiarConsumidorDocumentos
+      summary: Pausar o reanudar un consumidor de documentos-service
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/documentos/consumidores/{id}/{accion}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: *id002
+      - name: accion
+        in: path
+        required: true
+        schema: *id003
+  /api/admin/rabbit/salud:
+    get:
+      operationId: saludMensajeria
+      summary: Totales, tasas y alertas con su impacto en rendimiento y estabilidad
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/salud
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/admin/rabbit/policies:
+    get:
+      operationId: listarPoliticas
+      summary: Políticas de retención
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/policies
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/admin/rabbit/policies/{nombre}:
+    put:
+      operationId: guardarPolitica
+      summary: Crear o reemplazar una política de retención (en caliente)
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: PUT
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/policies/{nombre}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: &id004
+          type: string
+          pattern: ^[a-zA-Z0-9][a-zA-Z0-9._-]*$
+    delete:
+      operationId: eliminarPolitica
+      summary: Eliminar una política
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: DELETE
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/policies/{nombre}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+  /api/admin/rabbit/queues/{nombre}/reprocesar:
+    post:
+      operationId: reprocesarDlq
+      summary: Devolver mensajes de una DLQ a su cola de origen
+      tags:
+      - Mensajería
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues/{nombre}/reprocesar
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+      - name: max
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+  /api/admin/rabbit/nodes:
+    get:
+      operationId: listarNodos
+      summary: Nodos del clúster RabbitMQ
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/nodes
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/admin/rabbit/queues:
+    get:
+      operationId: listarColas
+      summary: Listar colas
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+    post:
+      operationId: crearCola
+      summary: Crear cola (opcionalmente con DLQ)
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/admin/rabbit/queues/{nombre}:
+    get:
+      operationId: obtenerCola
+      summary: Detalle de una cola
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues/{nombre}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+    delete:
+      operationId: eliminarCola
+      summary: Eliminar cola
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: DELETE
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues/{nombre}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+      - name: soloSiVacia
+        in: query
+        required: false
+        schema:
+          type: boolean
+  /api/admin/rabbit/queues/{nombre}/messages:
+    post:
+      operationId: publicarPrueba
+      summary: Publicar mensajes de prueba (colas fuera de la topología base)
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues/{nombre}/messages
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+    delete:
+      operationId: purgarCola
+      summary: Purgar mensajes de una cola
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: DELETE
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/queues/{nombre}/messages
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+  /api/admin/rabbit/exchanges:
+    get:
+      operationId: listarExchanges
+      summary: Listar exchanges
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/exchanges
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+    post:
+      operationId: crearExchange
+      summary: Crear exchange (DIRECT, TOPIC, FANOUT)
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/exchanges
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+  /api/admin/rabbit/exchanges/{nombre}:
+    delete:
+      operationId: eliminarExchange
+      summary: Eliminar exchange
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: DELETE
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/exchanges/{nombre}
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: nombre
+        in: path
+        required: true
+        schema: *id004
+  /api/admin/rabbit/bindings:
+    get:
+      operationId: listarBindings
+      summary: Listar bindings
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: GET
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/bindings
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+    post:
+      operationId: crearBinding
+      summary: Crear binding exchange -> cola
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: POST
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/bindings
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+    delete:
+      operationId: eliminarBinding
+      summary: Eliminar binding
+      tags:
+      - RabbitMQ Admin
+      security:
+      - cognito: []
+      x-amazon-apigateway-integration:
+        type: http_proxy
+        httpMethod: DELETE
+        uri: http://IP_BACKEND:8080/api/admin/rabbit/bindings
+        payloadFormatVersion: '1.0'
+        connectionType: INTERNET
+      parameters:
+      - name: exchange
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: cola
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: routingKey
+        in: query
+        required: false
+        schema:
+          type: string
+components:
+  securitySchemes:
+    cognito:
+      type: oauth2
+      flows: {}
+      x-amazon-apigateway-authorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        jwtConfiguration:
+          issuer: https://cognito-idp.REGION.amazonaws.com/USER_POOL_ID
+          audience:
+          - CLIENT_ID_COGNITO

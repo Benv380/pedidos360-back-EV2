@@ -1,0 +1,161 @@
+# =====================================================================================
+#  Pedidos 360 - backend completo
+#
+#  Levantar todo:                 docker compose up -d --build
+#  Solo el clúster RabbitMQ:      docker compose up -d rabbitmq1 rabbitmq2
+#  Ver el clúster:                docker compose exec rabbitmq1 rabbitmq-diagnostics cluster_status
+#
+#  Puertos publicados:
+#    8080  gateway nginx -> microservicios   (backend que consume Azure API Management)
+#    15672 consola RabbitMQ nodo 1   |  15673 consola RabbitMQ nodo 2
+#    5672 / 5673 AMQP nodo 1 / nodo 2 (para correr los microservicios desde el IDE)
+#    5432  PostgreSQL local (en la nube se usa Azure Database for PostgreSQL vía DB_URL)
+# =====================================================================================
+name: pedidos360
+
+x-rabbitmq: &rabbitmq
+  image: rabbitmq:4.1-management
+  environment:
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-pedidos}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-pedidos123}
+    COOKIE_CLUSTER: ${RABBITMQ_ERLANG_COOKIE:-pedidos360-cookie-cambiar}
+  # 1) Ambos nodos deben compartir la misma Erlang cookie para formar el clúster.
+  # 2) La configuración del clúster se copia con permisos 644: RabbitMQ ignora archivos
+  #    montados con permisos 777 (caso típico al montar desde Windows).
+  entrypoint:
+    - sh
+    - -c
+    - >
+      printf %s "$$COOKIE_CLUSTER" > /var/lib/rabbitmq/.erlang.cookie &&
+      chmod 600 /var/lib/rabbitmq/.erlang.cookie &&
+      chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie &&
+      cp /config/cluster.conf /etc/rabbitmq/conf.d/20-cluster.conf &&
+      chmod 644 /etc/rabbitmq/conf.d/20-cluster.conf &&
+      exec docker-entrypoint.sh rabbitmq-server
+  healthcheck:
+    test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+    interval: 10s
+    timeout: 10s
+    retries: 12
+    start_period: 30s
+  restart: unless-stopped
+
+x-app: &app
+  build:
+    context: .
+  restart: unless-stopped
+  environment: &app-env
+    RABBITMQ_ADDRESSES: rabbitmq1:5672,rabbitmq2:5672
+    RABBITMQ_USER: ${RABBITMQ_USER:-pedidos}
+    RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-pedidos123}
+    DB_URL: ${DB_URL:-jdbc:postgresql://postgres:5432/pedidos}
+    DB_USER: ${DB_USER:-pedidos}
+    DB_PASSWORD: ${DB_PASSWORD:-pedidos123}
+    SEGURIDAD_HABILITADA: ${SEGURIDAD_HABILITADA:-true}
+    ENTRA_ISSUER: ${ENTRA_ISSUER:-}
+    ENTRA_JWK_SET_URI: ${ENTRA_JWK_SET_URI:-}
+    ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+    COGNITO_ISSUER: ${COGNITO_ISSUER:-}
+    COGNITO_JWK_SET_URI: ${COGNITO_JWK_SET_URI:-}
+    COGNITO_CLIENT_ID: ${COGNITO_CLIENT_ID:-}
+    ROL_ADMIN: ${ROL_ADMIN:-}
+    CORS_ORIGENES: ${CORS_ORIGENES:-http://localhost:4200}
+  depends_on:
+    rabbitmq1:
+      condition: service_healthy
+    rabbitmq2:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+  # ----------------------------- RabbitMQ: clúster de 2 nodos -----------------------------
+  rabbitmq1:
+    <<: *rabbitmq
+    hostname: rabbitmq1
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./infra/rabbitmq/cluster.conf:/config/cluster.conf:ro
+      - rabbitmq1-data:/var/lib/rabbitmq
+
+  rabbitmq2:
+    <<: *rabbitmq
+    hostname: rabbitmq2
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    volumes:
+      - ./infra/rabbitmq/cluster.conf:/config/cluster.conf:ro
+      - rabbitmq2-data:/var/lib/rabbitmq
+    # Sin depends_on: los dos nodos deben arrancar en paralelo para descubrirse y formar el clúster.
+
+  # ----------------------------- Base de datos local -----------------------------
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: pedidos
+      POSTGRES_USER: ${DB_USER:-pedidos}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pedidos123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d pedidos"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # ----------------------------- Microservicios -----------------------------
+  pedidos-service:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: pedidos-service
+
+  notificaciones-service:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: notificaciones-service
+
+  documentos-service:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: documentos-service
+
+  rabbit-admin-service:
+    <<: *app
+    build:
+      context: .
+      args:
+        MODULE: rabbit-admin-service
+    environment:
+      <<: *app-env
+      RABBITMQ_MANAGEMENT_URL: http://rabbitmq1:15672
+
+  # ----------------------------- Gateway (entrada única) -----------------------------
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - pedidos-service
+      - notificaciones-service
+      - documentos-service
+      - rabbit-admin-service
+    restart: unless-stopped
+
+volumes:
+  rabbitmq1-data:
+  rabbitmq2-data:
+  postgres-data:

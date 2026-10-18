@@ -1,0 +1,397 @@
+openapi: 3.0.1
+info:
+  title: Pedidos 360 API
+  version: 1.0.0
+  description: >
+    API del sistema Pedidos 360. Todas las operaciones exigen un JWT (Bearer) emitido por el IDaaS
+    (Microsoft Entra External ID o Amazon Cognito). Contrato para registrar la API en Azure API Management
+    (importar este archivo). Para AWS API Gateway usar pedidos360-openapi-aws.yaml.
+servers:
+  # Backend real (gateway nginx de la VM). Reemplazar IP_BACKEND.
+  - url: http://IP_BACKEND:8080/api
+security:
+  - bearerJwt: []
+tags:
+  - name: Pedidos
+  - name: Documentos
+  - name: Actividad
+  - name: Mensajería
+  - name: RabbitMQ Admin
+paths:
+  /pedidos:
+    get:
+      tags: [Pedidos]
+      operationId: listarPedidos
+      summary: Listar pedidos
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Pedido' } } } } }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+    post:
+      tags: [Pedidos]
+      operationId: crearPedido
+      summary: Crear pedido (publica PEDIDO_CREADO en el exchange FANOUT)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearPedido' } } }
+      responses:
+        '201': { description: Creado, content: { application/json: { schema: { $ref: '#/components/schemas/Pedido' } } } }
+        '400': { $ref: '#/components/responses/Invalido' }
+        '401': { $ref: '#/components/responses/NoAutorizado' }
+  /pedidos/{id}:
+    get:
+      tags: [Pedidos]
+      operationId: obtenerPedido
+      summary: Obtener pedido
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Pedido' } } } }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /pedidos/{id}/estado:
+    patch:
+      tags: [Pedidos]
+      operationId: cambiarEstadoPedido
+      summary: Cambiar estado (publica ESTADO_CAMBIADO en el exchange TOPIC)
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties:
+                estado: { $ref: '#/components/schemas/EstadoPedido' }
+                simularFallo: { $ref: '#/components/schemas/SimulacionFallo' }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Pedido' } } } }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /pedidos/{id}/boleta:
+    post:
+      tags: [Pedidos]
+      operationId: solicitarBoleta
+      summary: Solicitar boleta (publica BOLETA_SOLICITADA en el exchange DIRECT)
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '202': { description: Aceptada, se procesa de forma asíncrona }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /documentos:
+    get:
+      tags: [Documentos]
+      operationId: listarDocumentos
+      summary: Listar tickets y boletas
+      parameters:
+        - { name: pedidoId, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Documento' } } } } }
+  /documentos/{id}/contenido:
+    get:
+      tags: [Documentos]
+      operationId: contenidoDocumento
+      summary: Contenido del documento (texto)
+      parameters: [ { $ref: '#/components/parameters/Id' } ]
+      responses:
+        '200': { description: OK, content: { text/plain: { schema: { type: string } } } }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /notificaciones:
+    get:
+      tags: [Actividad]
+      operationId: listarNotificaciones
+      summary: Notificaciones enviadas
+      responses:
+        '200': { description: OK }
+  /auditoria:
+    get:
+      tags: [Actividad]
+      operationId: listarAuditoria
+      summary: Eventos auditados (con exchange y routing key)
+      responses:
+        '200': { description: OK }
+  /notificaciones/consumidores:
+    get:
+      tags: [Mensajería]
+      operationId: listarConsumidoresNotificaciones
+      summary: Consumidores de notificaciones-service (notificaciones y auditoría)
+      responses:
+        '200': { description: OK }
+  /notificaciones/consumidores/{id}/{accion}:
+    post:
+      tags: [Mensajería]
+      operationId: cambiarConsumidorNotificaciones
+      summary: Pausar o reanudar un consumidor de notificaciones-service
+      parameters: [ { $ref: '#/components/parameters/IdConsumidor' }, { $ref: '#/components/parameters/Accion' } ]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /documentos/consumidores:
+    get:
+      tags: [Mensajería]
+      operationId: listarConsumidoresDocumentos
+      summary: Consumidores de documentos-service
+      responses:
+        '200': { description: OK }
+  /documentos/consumidores/{id}/{accion}:
+    post:
+      tags: [Mensajería]
+      operationId: cambiarConsumidorDocumentos
+      summary: Pausar o reanudar un consumidor de documentos-service
+      parameters: [ { $ref: '#/components/parameters/IdConsumidor' }, { $ref: '#/components/parameters/Accion' } ]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /admin/rabbit/salud:
+    get:
+      tags: [Mensajería]
+      operationId: saludMensajeria
+      summary: Totales, tasas y alertas con su impacto en rendimiento y estabilidad
+      responses:
+        '200': { description: OK }
+  /admin/rabbit/policies:
+    get:
+      tags: [Mensajería]
+      operationId: listarPoliticas
+      summary: Políticas de retención
+      responses:
+        '200': { description: OK }
+  /admin/rabbit/policies/{nombre}:
+    put:
+      tags: [Mensajería]
+      operationId: guardarPolitica
+      summary: Crear o reemplazar una política de retención (en caliente)
+      parameters: [ { $ref: '#/components/parameters/Nombre' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/Politica' } } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Invalido' }
+    delete:
+      tags: [Mensajería]
+      operationId: eliminarPolitica
+      summary: Eliminar una política
+      parameters: [ { $ref: '#/components/parameters/Nombre' } ]
+      responses:
+        '204': { description: Eliminada }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+  /admin/rabbit/queues/{nombre}/reprocesar:
+    post:
+      tags: [Mensajería]
+      operationId: reprocesarDlq
+      summary: Devolver mensajes de una DLQ a su cola de origen
+      parameters:
+        - { $ref: '#/components/parameters/Nombre' }
+        - { name: max, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 1000 } }
+      responses:
+        '200': { description: OK }
+        '400': { $ref: '#/components/responses/Invalido' }
+  /admin/rabbit/nodes:
+    get:
+      tags: [RabbitMQ Admin]
+      operationId: listarNodos
+      summary: Nodos del clúster RabbitMQ
+      responses:
+        '200': { description: OK }
+  /admin/rabbit/queues:
+    get:
+      tags: [RabbitMQ Admin]
+      operationId: listarColas
+      summary: Listar colas
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [RabbitMQ Admin]
+      operationId: crearCola
+      summary: Crear cola (opcionalmente con DLQ)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearCola' } } }
+      responses:
+        '201': { description: Creada }
+        '400': { $ref: '#/components/responses/Invalido' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/rabbit/queues/{nombre}:
+    get:
+      tags: [RabbitMQ Admin]
+      operationId: obtenerCola
+      summary: Detalle de una cola
+      parameters: [ { $ref: '#/components/parameters/Nombre' } ]
+      responses:
+        '200': { description: OK }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+    delete:
+      tags: [RabbitMQ Admin]
+      operationId: eliminarCola
+      summary: Eliminar cola
+      parameters:
+        - { $ref: '#/components/parameters/Nombre' }
+        - { name: soloSiVacia, in: query, required: false, schema: { type: boolean } }
+      responses:
+        '204': { description: Eliminada }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/rabbit/queues/{nombre}/messages:
+    post:
+      tags: [RabbitMQ Admin]
+      operationId: publicarPrueba
+      summary: Publicar mensajes de prueba (colas fuera de la topología base)
+      parameters: [ { $ref: '#/components/parameters/Nombre' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cantidad]
+              properties:
+                cantidad: { type: integer, minimum: 1, maximum: 1000 }
+                contenido: { type: string, maxLength: 500 }
+      responses:
+        '201': { description: Publicados }
+        '409': { $ref: '#/components/responses/Conflicto' }
+    delete:
+      tags: [RabbitMQ Admin]
+      operationId: purgarCola
+      summary: Purgar mensajes de una cola
+      parameters: [ { $ref: '#/components/parameters/Nombre' } ]
+      responses:
+        '200': { description: OK }
+  /admin/rabbit/exchanges:
+    get:
+      tags: [RabbitMQ Admin]
+      operationId: listarExchanges
+      summary: Listar exchanges
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [RabbitMQ Admin]
+      operationId: crearExchange
+      summary: Crear exchange (DIRECT, TOPIC, FANOUT)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearExchange' } } }
+      responses:
+        '201': { description: Creado }
+        '400': { $ref: '#/components/responses/Invalido' }
+  /admin/rabbit/exchanges/{nombre}:
+    delete:
+      tags: [RabbitMQ Admin]
+      operationId: eliminarExchange
+      summary: Eliminar exchange
+      parameters: [ { $ref: '#/components/parameters/Nombre' } ]
+      responses:
+        '204': { description: Eliminado }
+        '409': { $ref: '#/components/responses/Conflicto' }
+  /admin/rabbit/bindings:
+    get:
+      tags: [RabbitMQ Admin]
+      operationId: listarBindings
+      summary: Listar bindings
+      responses:
+        '200': { description: OK }
+    post:
+      tags: [RabbitMQ Admin]
+      operationId: crearBinding
+      summary: Crear binding exchange -> cola
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/Binding' } } }
+      responses:
+        '201': { description: Creado }
+        '400': { $ref: '#/components/responses/Invalido' }
+    delete:
+      tags: [RabbitMQ Admin]
+      operationId: eliminarBinding
+      summary: Eliminar binding
+      parameters:
+        - { name: exchange, in: query, required: true, schema: { type: string } }
+        - { name: cola, in: query, required: true, schema: { type: string } }
+        - { name: routingKey, in: query, required: false, schema: { type: string } }
+      responses:
+        '204': { description: Eliminado }
+        '404': { $ref: '#/components/responses/NoEncontrado' }
+components:
+  securitySchemes:
+    bearerJwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+    Nombre: { name: nombre, in: path, required: true, schema: { type: string, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' } }
+    IdConsumidor: { name: id, in: path, required: true, schema: { type: string, enum: [notificaciones, auditoria, documentos] } }
+    Accion: { name: accion, in: path, required: true, schema: { type: string, enum: [pausar, reanudar] } }
+  responses:
+    NoAutorizado: { description: JWT ausente o inválido }
+    Invalido: { description: Datos de entrada inválidos (ProblemDetail con detalle por campo) }
+    NoEncontrado: { description: Recurso no encontrado }
+    Conflicto: { description: Regla de negocio o recurso protegido }
+  schemas:
+    EstadoPedido: { type: string, enum: [CREADO, PAGADO, DESPACHADO, ENTREGADO, CANCELADO] }
+    SimulacionFallo: { type: string, enum: [NINGUNA, NOTIFICACION, DOCUMENTO, AUDITORIA] }
+    CrearPedido:
+      type: object
+      required: [cliente, emailCliente, descripcion, total]
+      properties:
+        cliente: { type: string, maxLength: 120 }
+        emailCliente: { type: string, format: email }
+        descripcion: { type: string, maxLength: 500 }
+        total: { type: number, minimum: 1 }
+        simularFallo: { $ref: '#/components/schemas/SimulacionFallo' }
+    Pedido:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        cliente: { type: string }
+        emailCliente: { type: string }
+        descripcion: { type: string }
+        total: { type: number }
+        estado: { $ref: '#/components/schemas/EstadoPedido' }
+        siguientesEstados: { type: array, items: { $ref: '#/components/schemas/EstadoPedido' } }
+        creadoPor: { type: string }
+        fechaCreacion: { type: string, format: date-time }
+        fechaActualizacion: { type: string, format: date-time }
+    Documento:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        pedidoId: { type: integer, format: int64 }
+        tipo: { type: string, enum: [TICKET, BOLETA] }
+        folio: { type: string }
+        fechaGeneracion: { type: string, format: date-time }
+    CrearCola:
+      type: object
+      required: [nombre]
+      properties:
+        nombre: { type: string, minLength: 3, maxLength: 100, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' }
+        tipo: { type: string, enum: [CLASSIC, QUORUM] }
+        durable: { type: boolean }
+        autoDelete: { type: boolean }
+        conDlq: { type: boolean }
+        ttlMs: { type: integer, minimum: 1000, maximum: 604800000 }
+        maxMensajes: { type: integer, minimum: 1, maximum: 1000000 }
+        desborde: { type: string, enum: [DROP_HEAD, REJECT_PUBLISH, REJECT_PUBLISH_DLX] }
+        expiraSinUsoMs: { type: integer, minimum: 10000, maximum: 2592000000 }
+    Politica:
+      type: object
+      required: [patron]
+      properties:
+        patron: { type: string, maxLength: 200, description: 'Expresión regular sobre el nombre de la cola, ej: ^demo\.' }
+        prioridad: { type: integer, minimum: 0, maximum: 999 }
+        ttlMs: { type: integer, minimum: 1000, maximum: 604800000 }
+        maxMensajes: { type: integer, minimum: 1, maximum: 1000000 }
+        desborde: { type: string, enum: [DROP_HEAD, REJECT_PUBLISH, REJECT_PUBLISH_DLX] }
+        expiraSinUsoMs: { type: integer, minimum: 10000, maximum: 2592000000 }
+    CrearExchange:
+      type: object
+      required: [nombre, tipo]
+      properties:
+        nombre: { type: string, minLength: 3, maxLength: 100, pattern: '^[a-zA-Z0-9][a-zA-Z0-9._-]*$' }
+        tipo: { type: string, enum: [DIRECT, TOPIC, FANOUT, HEADERS] }
+        durable: { type: boolean }
+        autoDelete: { type: boolean }
+    Binding:
+      type: object
+      required: [exchange, cola]
+      properties:
+        exchange: { type: string }
+        cola: { type: string }
+        routingKey: { type: string, maxLength: 255 }

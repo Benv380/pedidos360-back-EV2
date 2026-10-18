@@ -1,0 +1,34 @@
+# =====================================================================================
+#  SEGURIDAD: validación del JWT emitido por los IDaaS de confianza (multi-nube)
+#  Importado por todos los microservicios con spring.config.import: classpath:seguridad.yml
+#
+#  Se aceptan tokens de AMBOS proveedores. Por cada petición se lee el claim "iss" del token
+#  y se valida con las llaves, emisor y audiencia del proveedor correspondiente.
+#  Un proveedor sin issuer queda deshabilitado.
+# =====================================================================================
+seguridad:
+  # false SOLO para desarrollo local sin IDaaS. En la nube siempre true.
+  habilitada: ${SEGURIDAD_HABILITADA:true}
+  proveedores:
+    # ---------- Azure: Microsoft Entra External ID ----------
+    entra:
+      # https://<TENANT_ID>.ciamlogin.com/<TENANT_ID>/v2.0  (campo "issuer" del discovery)
+      issuer: ${ENTRA_ISSUER:}
+      # Opcional: https://<SUBDOMINIO>.ciamlogin.com/<TENANT_ID>/discovery/v2.0/keys  (campo "jwks_uri")
+      jwk-set-uri: ${ENTRA_JWK_SET_URI:}
+      # Client ID de la app registrada en Entra (el access token v2 lo trae en "aud")
+      audiencias: ${ENTRA_CLIENT_ID:}
+      claim-audiencia: aud
+    # ---------- AWS: Amazon Cognito ----------
+    cognito:
+      # https://cognito-idp.<REGION>.amazonaws.com/<USER_POOL_ID>
+      issuer: ${COGNITO_ISSUER:}
+      # Opcional: <issuer>/.well-known/jwks.json
+      jwk-set-uri: ${COGNITO_JWK_SET_URI:}
+      # App client ID de Cognito (el access token de Cognito no trae "aud": lo trae en "client_id")
+      audiencias: ${COGNITO_CLIENT_ID:}
+      claim-audiencia: client_id
+  # Si se define (ej: "Admin"), /api/admin/** exige ese rol: App Role de Entra (claim "roles")
+  # o grupo de Cognito (claim "cognito:groups").
+  rol-admin: ${ROL_ADMIN:}
+  cors-origenes: ${CORS_ORIGENES:http://localhost:4200}
